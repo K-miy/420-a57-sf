@@ -1,0 +1,3 @@
+google-cloud-storage
+google-cloud-vision
+gapic-google-cloud-vision-v1
