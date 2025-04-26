@@ -11,6 +11,6 @@ sudo chmod 777 /media/sf_vm_share
 loadkeys ca-fr &>/dev/null || loadkeys cf &>/dev/null || echo "Clavier non configuré"
 cd /media/sf_vm_share
 sudo chmod +x auto_eval.sh vm_evaluator.sh
-sudo ./auto_eval.sh $MATRICULE
+sudo /media/sf_vm_share/auto_eval.sh $MATRICULE
 
 echo "Évaluation terminée pour l'étudiant $MATRICULE"
