@@ -10,7 +10,9 @@ import google.cloud.vision_v1
 vision_client = vision.ImageAnnotatorClient()
 storage_client = storage.Client()
 
-project_id = 'votre projet'
+# Load configuration
+with open('config.json', 'r') as config_file:
+    config = json.load(config_file)
 
 # [END setup]
 
@@ -28,7 +30,7 @@ def get_image_from_bucket(bucket):
 def save_results(filename, result, extension='.json'):
     """Save results to bucket"""
 
-    bucket_name = "a10-results"
+    bucket_name = config['RESULT_BUCKET']
     result_filename = f'{filename}{extension}'
     bucket = storage_client.get_bucket(bucket_name)
     blob = bucket.blob(result_filename)
@@ -39,13 +41,36 @@ def save_results(filename, result, extension='.json'):
 # [END common functions]
 
 # [START functions_localize_objects]
-def localize_objects(bucket, filename):
+def localize_objects(request):
     """Localize objects in the image on Google Cloud Storage
 
     Args:
-    bucket: bucket object
-    filename: name of the image file
+    request: Cloud Function request object
     """
+    
+    # Parse the Cloud Storage event
+    try:
+        envelope = json.loads(request.data.decode('utf-8'))
+        
+        # Check if it's a Pub/Sub message format
+        if 'message' in envelope and 'data' in envelope['message']:
+            data = json.loads(base64.b64decode(envelope['message']['data']).decode('utf-8'))
+        # Check if it's direct Cloud Storage event format
+        elif 'bucket' in envelope and 'name' in envelope:
+            data = envelope
+        else:
+            print(f"Unknown message format: {envelope}")
+            return 'Unknown message format', 400
+            
+    except Exception as e:
+        print(f"Error parsing message: {e}")
+        return 'Error parsing message', 400
+    
+    # Extract bucket info
+    bucket = {
+        'bucket': data['bucket'],
+        'name': data['name']
+    }
    
     filename, image = get_image_from_bucket(bucket)
     objects = vision_client.object_localization(image=image).localized_object_annotations
@@ -69,17 +94,41 @@ def localize_objects(bucket, filename):
         }
 
     save_results(filename, result, extension='.objects.json')
+    return 'OK', 200
 # [END functions_localize_objects]
 
 
 # [START functions_detect_faces]
-def detect_faces(bucket, filename):
+def detect_faces(request):
     """Detects faces in a file located in Google Cloud Storage
 
     Args:
-    bucket: bucket object
-    filename: name of the image file
+    request: Cloud Function request object
     """
+    
+    # Parse the Cloud Storage event
+    try:
+        envelope = json.loads(request.data.decode('utf-8'))
+        
+        # Check if it's a Pub/Sub message format
+        if 'message' in envelope and 'data' in envelope['message']:
+            data = json.loads(base64.b64decode(envelope['message']['data']).decode('utf-8'))
+        # Check if it's direct Cloud Storage event format
+        elif 'bucket' in envelope and 'name' in envelope:
+            data = envelope
+        else:
+            print(f"Unknown message format: {envelope}")
+            return 'Unknown message format', 400
+            
+    except Exception as e:
+        print(f"Error parsing message: {e}")
+        return 'Error parsing message', 400
+    
+    # Extract bucket info
+    bucket = {
+        'bucket': data['bucket'],
+        'name': data['name']
+    }
 
     filename, image = get_image_from_bucket(bucket)
 
@@ -112,4 +161,5 @@ def detect_faces(bucket, filename):
         }
     
     save_results(filename, result, extension='.faces.json')
+    return 'OK', 200
 # [END functions_detect_faces]
